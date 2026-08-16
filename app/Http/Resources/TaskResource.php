@@ -27,6 +27,7 @@ class TaskResource extends JsonResource
             'project' => new ProjectResource($this->whenLoaded('project')),
             'assignee' => new UserResource($this->whenLoaded('assignee')),
             'creator' => new UserResource($this->whenLoaded('creator')),
+            'comments_count' => $this->whenCounted('comments'),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
             'deleted_at' => $this->deleted_at?->toISOString(),

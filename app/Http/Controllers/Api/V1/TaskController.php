@@ -28,7 +28,8 @@ class TaskController extends Controller
 
         $query = Task::query()
             ->with(['assignee', 'creator', 'project'])
-            ->where('project_id', $project->id);
+            ->where('project_id', $project->id)
+            ->withCount(['comments']);
 
         // Apply filters
         $query->status($request->status)
@@ -128,7 +129,7 @@ class TaskController extends Controller
         // Check authorization via Policy
         Gate::authorize('view', $task);
 
-        $task->load(['assignee', 'creator', 'project']);
+        $task->load(['assignee', 'creator', 'project', 'comments.user']);
 
         return response()->json([
             'success' => true,
@@ -269,6 +270,8 @@ class TaskController extends Controller
         try {
             DB::beginTransaction();
 
+            // Delete related comments
+            $task->comments()->delete();
             $task->forceDelete();
 
             DB::commit();
@@ -297,7 +300,8 @@ class TaskController extends Controller
 
         $query = Task::query()
             ->with(['project', 'assignee', 'creator'])
-            ->where('assignee_id', $user->id);
+            ->where('assignee_id', $user->id)
+            ->withCount(['comments']);
 
         // Apply filters
         $query->status($request->status)

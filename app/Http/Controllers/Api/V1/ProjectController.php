@@ -24,7 +24,7 @@ class ProjectController extends Controller
     {
         $query = Project::query()
             ->with(['owner', 'members'])
-            ->withCount(['members']);
+            ->withCount(['tasks', 'members']);
 
         //todo:filter move to model use when
         // Filter by search term (name or description)
@@ -129,7 +129,7 @@ class ProjectController extends Controller
         // Check authorization via Policy
         Gate::authorize('view', $project);
 
-        $project->load(['owner', 'members']);
+        $project->load(['owner', 'members', 'tasks']);
 
         return response()->json([
             'success' => true,
@@ -252,7 +252,7 @@ class ProjectController extends Controller
             DB::beginTransaction();
 
             // Delete related data
-            // $project->tasks()->forceDelete();
+            $project->tasks()->forceDelete();
             $project->members()->detach();
             $project->forceDelete();
 

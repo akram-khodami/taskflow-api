@@ -48,6 +48,14 @@ class Project extends Model
             ->withTimestamps();
     }
 
+    /**
+     * Get the tasks of the project
+     */
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(Task::class);
+    }
+
     // ========== HELPER METHODS ==========
 
     /**
