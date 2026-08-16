@@ -52,6 +52,21 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    /**
+     * Get the tasks assigned to the user
+     */
+    public function assignedTasks(): HasMany
+    {
+        return $this->hasMany(Task::class, 'assignee_id');
+    }
+
+    /**
+     * Get the tasks created by the user
+     */
+    public function createdTasks(): HasMany
+    {
+        return $this->hasMany(Task::class, 'created_by');
+    }
     // ========== ROLE METHODS ==========
 
     public function isAdmin(): bool
