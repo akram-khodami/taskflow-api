@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['name', 'email', 'password', 'role'])]
 #[Hidden(['password', 'remember_token'])]
@@ -31,7 +33,27 @@ class User extends Authenticatable
         ];
     }
 
-    // Helper methods for roles
+    // ========== RELATIONSHIPS ==========
+
+    /**
+     * Projects owned by the user
+     */
+    public function ownedProjects(): HasMany
+    {
+        return $this->hasMany(Project::class, 'owner_id');
+    }
+
+    /**
+     * Projects the user is a member of
+     */
+    public function projects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class, 'project_user')
+            ->withTimestamps();
+    }
+
+    // ========== ROLE METHODS ==========
+
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
