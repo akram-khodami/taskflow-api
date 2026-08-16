@@ -67,6 +67,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(Task::class, 'created_by');
     }
+
+    /**
+     * Get the comments written by the user
+     */
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class);
+    }
     // ========== ROLE METHODS ==========
 
     public function isAdmin(): bool

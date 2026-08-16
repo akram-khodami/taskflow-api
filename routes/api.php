@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\CommentController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\TaskController;
 
@@ -32,7 +33,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/tasks', [TaskController::class, 'index']);
             Route::post('/tasks', [TaskController::class, 'store']);
         });
-        
+
         // ========== TASK ROUTES (Direct) ==========
         Route::prefix('tasks')->group(function () {
             Route::get('/{task}', [TaskController::class, 'show']);
@@ -47,5 +48,25 @@ Route::prefix('v1')->group(function () {
 
         // ========== MY TASKS ==========
         Route::get('/my-tasks', [TaskController::class, 'myTasks']);
+
+
+        // ========== COMMENT ROUTES (Nested in Task) ==========
+        Route::prefix('tasks/{task}')->group(function () {
+            Route::get('/comments', [CommentController::class, 'index']);
+            Route::post('/comments', [CommentController::class, 'store']);
+        });
+         // ========== COMMENT ROUTES (Direct) ==========
+    Route::prefix('comments')->group(function () {
+        Route::get('/{comment}', [CommentController::class, 'show']);
+        Route::put('/{comment}', [CommentController::class, 'update']);
+        Route::delete('/{comment}', [CommentController::class, 'destroy']);
+
+        // Get replies for a comment
+        Route::get('/{comment}/replies', [CommentController::class, 'replies']);
+
+        // Soft Delete - Restore & Force Delete
+        Route::post('/{id}/restore', [CommentController::class, 'restore']);
+        Route::delete('/{id}/force', [CommentController::class, 'forceDelete']);
+    });
     });
 });
