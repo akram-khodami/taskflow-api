@@ -20,7 +20,6 @@ class AuthTest extends TestCase
             'email' => 'test@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
-            // 'role' => 'member',
         ]);
 
         $response->assertStatus(201)
@@ -28,7 +27,7 @@ class AuthTest extends TestCase
                 'message',
                 'user' => ['id', 'name', 'email', 'role'],
                 'token',
-                // 'token_type',
+                'token_type',
             ]);
     }
 
@@ -38,7 +37,6 @@ class AuthTest extends TestCase
             'name' => 'Existing User',
             'email' => 'existing@example.com',
             'password' => Hash::make('password'),
-            // 'role' => 'member',
         ]);
 
         $response = $this->postJson('/api/v1/register', [
@@ -61,7 +59,6 @@ class AuthTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password123'),
-            // 'role' => 'member',
         ]);
 
         $response = $this->postJson('/api/v1/login', [
@@ -74,7 +71,7 @@ class AuthTest extends TestCase
                 'message',
                 'user' => ['id', 'name', 'email', 'role'],
                 'token',
-                // 'token_type',
+                'token_type',
             ]);
     }
 
@@ -85,7 +82,6 @@ class AuthTest extends TestCase
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => Hash::make('password123'),
-            // 'role' => 'member',
         ]);
 
         $response = $this->postJson('/api/v1/login', [
@@ -158,19 +154,13 @@ class AuthTest extends TestCase
         ])->getJson('/api/v1/user');
 
         $response->assertStatus(200)
-            // ->assertJson([
-            //     'message' => 'User logged in successfully',
-            //     'user' => [
-            //         'id' => $user->id,
-            //         'name' => $user->name,
-            //         'email' => $user->email,
-            //         "email_verified_at" =>  $user->email_verified_at,
-            //         "created_at" => $user->created_at,
-            //         "updated_at" => $user->updated_at,
-            //         'role' => $user->role,
-            //     ],
-            // ])
-            ;
+            ->assertJsonPath('message', 'User fetched successfully')
+            ->assertJsonPath('user.id', $user->id)
+            ->assertJsonPath('user.name', $user->name)
+            ->assertJsonPath('user.email', $user->email)
+            ->assertJsonPath('user.role', $user->role)
+            ->assertJsonPath('user.created_at', $user->created_at->toJSON())
+            ->assertJsonPath('user.updated_at', $user->updated_at->toJSON());
     }
 
     public function test_unauthenticated_user_cannot_get_profile(): void

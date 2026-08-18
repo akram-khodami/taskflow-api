@@ -18,10 +18,9 @@ class AuthController extends Controller
     {
         $data = $request->validated();
 
-        //default role to member if not provided
-        if (!isset($data['role'])) {
-            $data['role'] = Role::MEMBER->value;
-        }
+        //Tip: password will be hashed automaticlly by model(look at cast part)
+
+        $data['role'] = Role::MEMBER->value;
 
         $user = User::create($data);
 
@@ -31,7 +30,7 @@ class AuthController extends Controller
             'message' => 'User registered successfully',
             'user' => new UserResource($user),
             'token' => $token,
-            // 'token_type' => 'Bearer',
+            'token_type' => 'Bearer',
         ], 201);
     }
 
@@ -53,6 +52,7 @@ class AuthController extends Controller
             'message' => 'User logged in successfully',
             'user' => new UserResource($user),
             'token' => $token,
+            'token_type' => 'Bearer',
         ]);
     }
 
@@ -68,6 +68,9 @@ class AuthController extends Controller
 
     public function user(Request $request)
     {
-        return response()->json($request->user());
+        return response()->json([
+            'message' => 'User fetched successfully',
+            'user' => new UserResource($request->user()),
+        ]);
     }
 }
