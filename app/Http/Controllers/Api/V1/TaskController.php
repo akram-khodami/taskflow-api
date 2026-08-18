@@ -6,8 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\StoreTaskRequest;
 use App\Http\Requests\V1\UpdateTaskRequest;
 use App\Http\Requests\V1\UpdateTaskStatusRequest;
-use App\Http\Resources\TaskCollection;
-use App\Http\Resources\TaskResource;
+use App\Http\Resources\V1\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -21,56 +20,27 @@ class TaskController extends Controller
     /**
      * Display a listing of tasks for a project
      */
-    public function index(Request $request, Project $project): TaskCollection
+    public function index(Request $request, Project $project)
     {
-        // Check authorization via Policy
         Gate::authorize('viewAny', [Task::class, $project]);
 
         $query = Task::query()
             ->with(['assignee', 'creator', 'project'])
             ->where('project_id', $project->id)
-            ->withCount(['comments']);
-
-        // Apply filters
-        $query->status($request->status)
+            ->withCount(['comments'])
+            ->status($request->status)
             ->priority($request->priority)
             ->assignee($request->assignee)
-            ->search($request->search);
+            ->search($request->search)
+            ->dueDateRange($request->due_from, $request->due_to)
+            ->overdue($request->overdue === 'true')
+            ->withTrashedIfRequested($request->trashed === 'true')
+            ->applySorting($request->input('sort_by', 'created_at'), $request->input('sort_order', 'desc'));
 
-        // Filter by date range
-        if ($request->due_from) {
-            $query->where('due_date', '>=', $request->due_from);
-        }
-        if ($request->due_to) {
-            $query->where('due_date', '<=', $request->due_to);
-        }
-
-        // Include overdue tasks
-        if ($request->overdue === 'true') {
-            $query->where('due_date', '<', now())
-                ->where('status', '!=', 'done');
-        }
-
-        // Include trashed tasks if requested
-        if ($request->trashed === 'true') {
-            $query->withTrashed();
-        }
-
-        // Sorting
-        $sortField = $request->input('sort_by', 'created_at');
-        $sortOrder = $request->input('sort_order', 'desc');
-
-        // Validate sort field to prevent SQL injection
-        $allowedSortFields = ['title', 'status', 'priority', 'due_date', 'created_at'];
-        if (in_array($sortField, $allowedSortFields)) {
-            $query->orderBy($sortField, $sortOrder);
-        }
-
-        // Paginate
         $perPage = $request->input('per_page', 15);
         $tasks = $query->paginate($perPage);
 
-        return new TaskCollection($tasks);
+        return TaskResource::collection($tasks);
     }
 
     /**
@@ -126,7 +96,6 @@ class TaskController extends Controller
      */
     public function show(Request $request, Task $task): JsonResponse
     {
-        // Check authorization via Policy
         Gate::authorize('view', $task);
 
         $task->load(['assignee', 'creator', 'project', 'comments.user']);
@@ -181,6 +150,8 @@ class TaskController extends Controller
      */
     public function updateStatus(UpdateTaskStatusRequest $request, Task $task): JsonResponse
     {
+        Gate::authorize('update', $task);
+
         try {
             $task->update([
                 'status' => $request->status,
@@ -205,7 +176,6 @@ class TaskController extends Controller
      */
     public function destroy(Request $request, Task $task): JsonResponse
     {
-        // Check authorization via Policy
         Gate::authorize('delete', $task);
 
         try {
@@ -237,7 +207,6 @@ class TaskController extends Controller
     {
         $task = Task::withTrashed()->findOrFail($id);
 
-        // Check authorization via Policy
         Gate::authorize('restore', $task);
 
         try {
@@ -264,7 +233,6 @@ class TaskController extends Controller
     {
         $task = Task::withTrashed()->findOrFail($id);
 
-        // Check authorization via Policy
         Gate::authorize('forceDelete', $task);
 
         try {
@@ -301,28 +269,13 @@ class TaskController extends Controller
         $query = Task::query()
             ->with(['project', 'assignee', 'creator'])
             ->where('assignee_id', $user->id)
-            ->withCount(['comments']);
-
-        // Apply filters
-        $query->status($request->status)
+            ->withCount(['comments'])
+            ->status($request->status)
             ->priority($request->priority)
-            ->search($request->search);
+            ->search($request->search)
+            ->overdue($request->overdue === 'true')
+            ->applySorting($request->input('sort_by', 'created_at'), $request->input('sort_order', 'desc'));
 
-        // Include overdue filter
-        if ($request->overdue === 'true') {
-            $query->where('due_date', '<', now())
-                ->where('status', '!=', 'done');
-        }
-
-        // Sorting
-        $sortField = $request->input('sort_by', 'created_at');
-        $sortOrder = $request->input('sort_order', 'desc');
-        $allowedSortFields = ['title', 'status', 'priority', 'due_date', 'created_at'];
-        if (in_array($sortField, $allowedSortFields)) {
-            $query->orderBy($sortField, $sortOrder);
-        }
-
-        // Paginate
         $perPage = $request->input('per_page', 15);
         $tasks = $query->paginate($perPage);
 
@@ -336,7 +289,7 @@ class TaskController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'tasks' => new TaskCollection($tasks),
+                'tasks' => TaskResource::collection($tasks),
                 'statistics' => [
                     'total' => array_sum($statistics),
                     'by_status' => $statistics,

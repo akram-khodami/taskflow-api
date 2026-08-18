@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\TaskController;
 
 Route::prefix('v1')->group(function () {
+
     // ========== Public Routes ==========
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -15,7 +16,6 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/user', [AuthController::class, 'user']);
-
 
         // ========== PROJECTS ==========
         Route::get('/projects', [ProjectController::class, 'index']);

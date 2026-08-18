@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Http\Resources;
+namespace App\Http\Resources\V1;
 
+use App\Http\Resources\CommentResource;
 use App\Http\Resources\V1\UserResource;
 use App\Models\Task;
 use Illuminate\Http\Request;
@@ -17,16 +18,15 @@ class TaskResource extends JsonResource
             'description' => $this->description,
             'status' => $this->status,
             'status_label' => Task::STATUSES[$this->status] ?? $this->status,
-            'status_color' => $this->status_color,
             'priority' => $this->priority,
             'priority_label' => Task::PRIORITIES[$this->priority] ?? $this->priority,
-            'priority_color' => $this->priority_color,
             'due_date' => $this->due_date?->toISOString(),
             'due_date_formatted' => $this->due_date?->format('Y-m-d'),
             'is_overdue' => $this->isOverdue(),
             'project' => new ProjectResource($this->whenLoaded('project')),
             'assignee' => new UserResource($this->whenLoaded('assignee')),
             'creator' => new UserResource($this->whenLoaded('creator')),
+            'comments' => CommentResource::collection($this->whenLoaded('comments')), // اینجا رو عوض کن
             'comments_count' => $this->whenCounted('comments'),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

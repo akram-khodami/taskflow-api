@@ -96,7 +96,7 @@ class Task extends Model
     }
 
 
-    // ========== SCOPES ==========
+ // ========== SCOPES ==========
 
     /**
      * Scope a query to filter by status
@@ -161,6 +161,53 @@ class Task extends Model
         return $query->where('assignee_id', $userId);
     }
 
+    /**
+     * Scope a query to filter by due date range
+     */
+    public function scopeDueDateRange($query, $from = null, $to = null)
+    {
+        if ($from) {
+            $query->where('due_date', '>=', $from);
+        }
+        if ($to) {
+            $query->where('due_date', '<=', $to);
+        }
+        return $query;
+    }
+
+    /**
+     * Scope a query to get overdue tasks
+     */
+    public function scopeOverdue($query)
+    {
+        return $query->where('due_date', '<', now())
+            ->where('status', '!=', 'done');
+    }
+
+    /**
+     * Scope a query to include trashed tasks
+     */
+    public function scopeWithTrashedIfRequested($query, $withTrashed = false)
+    {
+        if ($withTrashed) {
+            return $query->withTrashed();
+        }
+        return $query;
+    }
+
+    /**
+     * Scope a query to apply sorting
+     */
+    public function scopeApplySorting($query, $sortBy = 'created_at', $sortOrder = 'desc')
+    {
+        $allowedSortFields = ['title', 'status', 'priority', 'due_date', 'created_at'];
+
+        if (in_array($sortBy, $allowedSortFields)) {
+            return $query->orderBy($sortBy, $sortOrder);
+        }
+
+        return $query->orderBy('created_at', 'desc');
+    }
     // ========== HELPER METHODS ==========
 
     /**
