@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Resources;
+namespace App\Http\Resources\V1;
 
 use App\Http\Resources\V1\UserResource;
 use Illuminate\Http\Request;
@@ -20,6 +20,7 @@ class ProjectResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'owner' => new UserResource($this->whenLoaded('owner')),
+            'tasks' => TaskResource::collection($this->whenLoaded('tasks')),
             'members' => UserResource::collection($this->whenLoaded('members')),
             'tasks_count' => $this->whenCounted('tasks'),
             'members_count' => $this->whenCounted('members'),

@@ -11,8 +11,7 @@ class UpdateProjectRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        // Check if user can update this project via Policy
-        return $this->user()->can('update', $this->route('project'));
+        return true;
     }
 
     /**

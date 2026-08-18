@@ -5,82 +5,57 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\StoreProjectRequest;
 use App\Http\Requests\V1\UpdateProjectRequest;
-use App\Http\Resources\ProjectCollection;
-use App\Http\Resources\ProjectResource;
+use App\Http\Resources\V1\ProjectResource;
 use App\Models\Project;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class ProjectController extends Controller
 {
 
-//todo:use servive class
+    //todo:use servive class
+
     /**
      * Display a listing of projects
      */
-    public function index(Request $request): ProjectCollection
+    public function index(Request $request): AnonymousResourceCollection
     {
+        $user = $request->user();
+
+        // Build filters array
+        $filters = [
+            'search' => $request->search,
+            'owner_id' => $request->owner_id,
+            'member_id' => $request->member_id,
+            'trashed' => $request->trashed,
+            'user' => $user,
+        ];
+
         $query = Project::query()
             ->with(['owner', 'members'])
-            ->withCount(['tasks', 'members']);
-
-        //todo:filter move to model use when
-        // Filter by search term (name or description)
-        if ($request->has('search') && !empty($request->search)) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'LIKE', "%{$search}%")
-                    ->orWhere('description', 'LIKE', "%{$search}%");
-            });
-        }
-
-        // Filter by owner
-        if ($request->has('owner_id') && $request->owner_id) {
-            $query->where('owner_id', $request->owner_id);
-        }
-
-        // Filter by member
-        if ($request->has('member_id') && $request->member_id) {
-            $query->whereHas('members', function ($q) use ($request) {
-                $q->where('user_id', $request->member_id);
-            });
-        }
-
-        // Show only projects the user has access to (unless admin)
-        $user = $request->user();
-        if (!$user->isAdmin()) {
-            $query->where(function ($q) use ($user) {
-                $q->where('owner_id', $user->id)
-                    ->orWhereHas('members', function ($subQuery) use ($user) {
-                        $subQuery->where('user_id', $user->id);
-                    });
-            });
-        }
-
-        // Include trashed projects if requested
-        if ($request->has('trashed') && $request->trashed === 'true') {
-            $query->withTrashed();
-        }
-
-        // Sort
-        $sortField = $request->input('sort_by', 'created_at');
-        $sortOrder = $request->input('sort_order', 'desc');
-        $query->orderBy($sortField, $sortOrder);
+            ->withCount(['tasks', 'members'])
+            ->filter($filters) // Apply filters from model
+            ->sort(
+                $request->input('sort_by', 'created_at'),
+                $request->input('sort_order', 'desc')
+            );
 
         // Paginate
         $perPage = $request->input('per_page', 15);
         $projects = $query->paginate($perPage);
 
-        return new ProjectCollection($projects);
+        return ProjectResource::collection($projects);
     }
-
     /**
      * Store a newly created project
      */
     public function store(StoreProjectRequest $request): JsonResponse
     {
+        Gate::authorize('create', Project::class);
+
         try {
             DB::beginTransaction();
 
@@ -142,6 +117,9 @@ class ProjectController extends Controller
      */
     public function update(UpdateProjectRequest $request, Project $project): JsonResponse
     {
+
+        Gate::authorize('update', $project);
+
         try {
             DB::beginTransaction();
 
@@ -191,8 +169,10 @@ class ProjectController extends Controller
         try {
             DB::beginTransaction();
 
-            // Delete associated tasks and comments?
-            // We'll use soft delete so they remain
+            // Detach all members first
+            $project->members()->detach();
+
+            // Soft delete the project (tasks will be soft deleted via cascade)
             $project->delete();
 
             DB::commit();

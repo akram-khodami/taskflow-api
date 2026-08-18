@@ -12,8 +12,7 @@ class StoreProjectRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        // Check if user can create projects via Policy
-        return $this->user()->can('create', \App\Models\Project::class);
+        return true;
     }
 
     /**
@@ -24,7 +23,7 @@ class StoreProjectRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],//todo:unique
             'description' => ['nullable', 'string', 'max:1000'],
             'members' => ['nullable', 'array'],
             'members.*' => ['exists:users,id'],
