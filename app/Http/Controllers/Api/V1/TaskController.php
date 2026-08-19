@@ -262,7 +262,7 @@ class TaskController extends Controller
      * Get all tasks assigned to the authenticated user
      * (My Tasks Dashboard)
      */
-    public function myTasks(Request $request): JsonResponse
+    public function myTasks(Request $request)
     {
         $user = $request->user();
 
@@ -286,10 +286,9 @@ class TaskController extends Controller
             ->pluck('count', 'status')
             ->toArray();
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'tasks' => TaskResource::collection($tasks),
+
+        return TaskResource::collection($tasks)->additional(
+            [
                 'statistics' => [
                     'total' => array_sum($statistics),
                     'by_status' => $statistics,
@@ -297,8 +296,8 @@ class TaskController extends Controller
                         ->where('due_date', '<', now())
                         ->where('status', '!=', 'done')
                         ->count(),
-                ],
-            ],
-        ], 200);
+                ]
+            ]
+        );
     }
 }
