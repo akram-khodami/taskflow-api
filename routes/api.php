@@ -6,8 +6,11 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CommentController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\TaskController;
+use App\Http\Controllers\Api\V1\UserController;
 
 Route::prefix('v1')->group(function () {
+
+    Route::get('/users', [UserController::class, 'index']);
 
     // ========== Public Routes ==========
     Route::post('/register', [AuthController::class, 'register']);
@@ -55,18 +58,18 @@ Route::prefix('v1')->group(function () {
             Route::get('/comments', [CommentController::class, 'index']);
             Route::post('/comments', [CommentController::class, 'store']);
         });
-         // ========== COMMENT ROUTES (Direct) ==========
-    Route::prefix('comments')->group(function () {
-        Route::get('/{comment}', [CommentController::class, 'show']);
-        Route::put('/{comment}', [CommentController::class, 'update']);
-        Route::delete('/{comment}', [CommentController::class, 'destroy']);
+        // ========== COMMENT ROUTES (Direct) ==========
+        Route::prefix('comments')->group(function () {
+            Route::get('/{comment}', [CommentController::class, 'show']);
+            Route::put('/{comment}', [CommentController::class, 'update']);
+            Route::delete('/{comment}', [CommentController::class, 'destroy']);
 
-        // Get replies for a comment
-        Route::get('/{comment}/replies', [CommentController::class, 'replies']);
+            // Get replies for a comment
+            Route::get('/{comment}/replies', [CommentController::class, 'replies']);
 
-        // Soft Delete - Restore & Force Delete
-        Route::post('/{id}/restore', [CommentController::class, 'restore']);
-        Route::delete('/{id}/force', [CommentController::class, 'forceDelete']);
-    });
+            // Soft Delete - Restore & Force Delete
+            Route::post('/{id}/restore', [CommentController::class, 'restore']);
+            Route::delete('/{id}/force', [CommentController::class, 'forceDelete']);
+        });
     });
 });
