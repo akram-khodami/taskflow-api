@@ -127,6 +127,17 @@ class TaskTest extends TestCase
         // $this->assertEquals('backlog', $response->json('data.0.status'));
     }
 
+    public function test_task_index_rejects_invalid_filters(): void
+    {
+        $token = $this->member->createToken('auth_token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson("/api/v1/projects/{$this->project->id}/tasks?status=invalid&per_page=0");
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['status', 'per_page']);
+    }
+
     public function test_user_can_search_tasks_by_title(): void
     {
         Task::factory()->forProject($this->project)->create(['title' => 'Fix payment bug']);

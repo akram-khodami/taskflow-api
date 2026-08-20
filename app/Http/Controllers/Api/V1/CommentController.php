@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\V1\CommentIndexRequest;
 use App\Http\Requests\V1\StoreCommentRequest;
 use App\Http\Requests\V1\UpdateCommentRequest;
 use App\Http\Resources\CommentCollection;
@@ -19,7 +20,7 @@ class CommentController extends Controller
     /**
      * Display a listing of comments for a task
      */
-    public function index(Request $request, Task $task): CommentCollection
+    public function index(CommentIndexRequest $request, Task $task): CommentCollection
     {
         // Check authorization via Policy
         Gate::authorize('viewAny', [Comment::class, $task]);

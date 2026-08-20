@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\V1\UserIndexRequest;
 use App\Http\Resources\V1\UserResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -14,7 +15,7 @@ class UserController extends Controller
     /**
      * Display a listing of users
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(UserIndexRequest $request): AnonymousResourceCollection
     {
         $query = User::query();
 

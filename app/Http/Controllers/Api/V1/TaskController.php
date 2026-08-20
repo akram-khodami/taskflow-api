@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\V1\TaskIndexRequest;
 use App\Http\Requests\V1\StoreTaskRequest;
 use App\Http\Requests\V1\UpdateTaskRequest;
 use App\Http\Requests\V1\UpdateTaskStatusRequest;
@@ -20,7 +21,7 @@ class TaskController extends Controller
     /**
      * Display a listing of tasks for a project
      */
-    public function index(Request $request, Project $project)
+    public function index(TaskIndexRequest $request, Project $project)
     {
         Gate::authorize('viewAny', [Task::class, $project]);
 
@@ -33,8 +34,8 @@ class TaskController extends Controller
             ->assignee($request->assignee)
             ->search($request->search)
             ->dueDateRange($request->due_from, $request->due_to)
-            ->overdue($request->overdue === 'true')
-            ->withTrashedIfRequested($request->trashed === 'true')
+            ->overdue($request->boolean('overdue'))
+            ->withTrashedIfRequested($request->boolean('trashed'))
             ->applySorting($request->input('sort_by', 'created_at'), $request->input('sort_order', 'desc'));
 
         $perPage = $request->input('per_page', 15);

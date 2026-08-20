@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\V1\ProjectIndexRequest;
 use App\Http\Requests\V1\StoreProjectRequest;
 use App\Http\Requests\V1\UpdateProjectRequest;
 use App\Http\Resources\V1\ProjectResource;
@@ -21,7 +22,7 @@ class ProjectController extends Controller
     /**
      * Display a listing of projects
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(ProjectIndexRequest $request): AnonymousResourceCollection
     {
         $user = $request->user();
 

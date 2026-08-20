@@ -178,8 +178,12 @@ class Task extends Model
     /**
      * Scope a query to get overdue tasks
      */
-    public function scopeOverdue($query)
+    public function scopeOverdue($query, $overdue = false)
     {
+        if (!$overdue) {
+            return $query;
+        }
+
         return $query->where('due_date', '<', now())
             ->where('status', '!=', 'done');
     }

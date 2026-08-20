@@ -72,6 +72,17 @@ class ProjectTest extends TestCase
         $this->assertCount(3, $projectIds); // Only the ones they own
     }
 
+    public function test_project_index_rejects_invalid_filters(): void
+    {
+        $token = $this->admin->createToken('auth_token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson('/api/v1/projects?owner_id=invalid&sort_by=invalid&per_page=0');
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['owner_id', 'sort_by', 'per_page']);
+    }
+
     // ============================================
     // CREATE PROJECT
     // ============================================

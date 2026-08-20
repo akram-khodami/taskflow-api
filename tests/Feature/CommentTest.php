@@ -157,6 +157,17 @@ class CommentTest extends TestCase
         $this->assertCount(5, $response->json('data'));
     }
 
+    public function test_comment_index_rejects_invalid_filters(): void
+    {
+        $token = $this->member->createToken('auth_token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson("/api/v1/tasks/{$this->task->id}/comments?sort_by=invalid&sort_order=invalid&per_page=0");
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['sort_by', 'sort_order', 'per_page']);
+    }
+
     public function test_comments_are_shown_with_replies_count(): void
     {
         $parent = Comment::factory()->forTask($this->task)->byUser($this->member)->create();
