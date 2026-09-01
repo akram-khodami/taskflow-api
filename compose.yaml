@@ -1,0 +1,63 @@
+services:
+      app:
+            build:
+                  context: .
+                  dockerfile: Dockerfile
+
+            container_name: laravel_api_app
+
+            restart: unless-stopped
+
+            working_dir: /var/www/html
+
+            volumes:
+                  - ./:/var/www/html
+                  - /var/www/html/vendor
+
+            ports:
+                  - "8000:8000"
+
+            environment:
+                  APP_ENV: local
+                  APP_DEBUG: true
+
+                  DB_CONNECTION: mysql
+                  DB_HOST: db
+                  DB_PORT: 3306
+                  DB_DATABASE: taskflow
+                  DB_USERNAME: root
+                  DB_PASSWORD: ""
+
+            depends_on:
+                  - db
+
+            networks:
+                  - laravel
+
+      db:
+            image: mysql:8.0.41
+
+            container_name: laravel_db
+
+            restart: unless-stopped
+
+            environment:
+                  MYSQL_DATABASE: taskflow
+                  MYSQL_ROOT_PASSWORD: ""
+                  MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+
+            ports:
+                  - "3306:3306"
+
+            volumes:
+                  - db_data:/var/lib/mysql
+
+            networks:
+                  - laravel
+
+networks:
+      laravel:
+            driver: bridge
+
+volumes:
+      db_data:
