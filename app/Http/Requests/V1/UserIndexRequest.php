@@ -19,7 +19,7 @@ class UserIndexRequest extends FormRequest
             'role' => ['nullable', Rule::in(['admin', 'manager', 'member'])],
             'exclude_self' => ['nullable', 'boolean'],
             'only_managers' => ['nullable', 'boolean'],
-            'exclude_admins' => ['nullable', 'boolean'],
+            'exclude_admins' => ['nullable','in:true,false,1,0'],
             'project_id' => ['nullable', 'integer', 'exists:projects,id'],
             'not_in_project' => ['nullable', 'integer', 'exists:projects,id'],
             'sort_by' => ['nullable', Rule::in(['id', 'name', 'email', 'role', 'created_at'])],
