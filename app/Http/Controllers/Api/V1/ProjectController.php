@@ -106,7 +106,8 @@ class ProjectController extends Controller
         Gate::authorize('view', $project);
 
         $project->load(['owner', 'members', 'tasks']);
-
+        $project->loadCount(['tasks', 'members']);
+ 
         return response()->json([
             'success' => true,
             'data' => new ProjectResource($project),
