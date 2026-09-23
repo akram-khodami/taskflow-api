@@ -10,8 +10,6 @@ use App\Http\Controllers\Api\V1\UserController;
 
 Route::prefix('v1')->group(function () {
 
-    Route::get('/users', [UserController::class, 'index']);
-
     // ========== Public Routes ==========
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -19,6 +17,8 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/user', [AuthController::class, 'user']);
+
+        Route::get('/users', [UserController::class, 'index']);
 
         // ========== PROJECTS ==========
         Route::get('/projects', [ProjectController::class, 'index']);
