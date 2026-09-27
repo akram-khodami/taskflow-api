@@ -11,8 +11,8 @@ use App\Http\Controllers\Api\V1\UserController;
 Route::prefix('v1')->group(function () {
 
     // ========== Public Routes ==========
-    Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/login', [AuthController::class, 'login'])->name('login');
+    Route::post('/register', [AuthController::class, 'register'])->name('login')->middleware('throttle:auth');
+    Route::post('/login', [AuthController::class, 'login'])->name('login')->middleware('throttle:auth');
     // ========== Protected Routes ==========
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
