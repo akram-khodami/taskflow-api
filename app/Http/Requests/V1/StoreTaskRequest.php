@@ -25,7 +25,11 @@ class StoreTaskRequest extends FormRequest
             'status' => ['nullable', Rule::in(array_keys(Task::STATUSES))],
             'priority' => ['nullable', Rule::in(array_keys(Task::PRIORITIES))],
             'due_date' => ['nullable', 'date', 'after_or_equal:today'],
-            'assignee_id' => ['nullable', 'exists:users,id'],
+            'assignee_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('project_user', 'user_id')->where('project_id', $this->route('project')->id),
+            ],
         ];
     }
 

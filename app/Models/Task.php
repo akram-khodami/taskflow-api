@@ -184,7 +184,7 @@ class Task extends Model
             return $query;
         }
 
-        return $query->where('due_date', '<', now())
+        return $query->whereDate('due_date', '<', today()->toDateString())
             ->where('status', '!=', 'done');
     }
 
@@ -219,6 +219,8 @@ class Task extends Model
      */
     public function isOverdue(): bool
     {
-        return $this->due_date && $this->due_date->isPast() && $this->status !== 'done';
+        return $this->due_date !== null
+            && $this->due_date->lt(today())
+            && $this->status !== 'done';
     }
 }

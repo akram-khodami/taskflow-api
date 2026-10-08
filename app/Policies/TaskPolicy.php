@@ -52,13 +52,8 @@ class TaskPolicy
      */
     public function create(User $user, Project $project): bool
     {
-        // Admin and Manager can create tasks
-        if ($user->hasAnyRole(['admin', 'manager'])) {
-            return true;
-        }
-
-        // Member can only create tasks if they are member of the project
-        return $project->isMember($user);
+        return $this->isAdmin($user)
+            || ($user->isManager() && $project->hasAccess($user));
     }
 
     /**
@@ -78,8 +73,8 @@ class TaskPolicy
             return true;
         }
 
-        // Member can update if they are the assignee
-        if ($user->isMember() && $task->assignee_id === $user->id) {
+        // Members can update their own tasks while they still belong to its project.
+        if ($user->isMember() && $project->hasAccess($user) && $task->assignee_id === $user->id) {
             return true;
         }
 
@@ -103,8 +98,8 @@ class TaskPolicy
             return true;
         }
 
-        // Member can update if they are the assignee
-        if ($user->isMember() && $task->assignee_id === $user->id) {
+        // Members can update their own tasks while they still belong to its project.
+        if ($user->isMember() && $project->hasAccess($user) && $task->assignee_id === $user->id) {
             return true;
         }
 

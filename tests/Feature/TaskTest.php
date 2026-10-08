@@ -52,7 +52,7 @@ class TaskTest extends TestCase
                 'description' => 'Task description',
                 'status' => 'backlog',
                 'priority' => 'high',
-                'due_date' => '2026-09-01',
+                'due_date' => now()->toDateString(),
                 'assignee_id' => $this->member->id,
             ]);
 
@@ -69,7 +69,7 @@ class TaskTest extends TestCase
         ]);
     }
 
-    public function test_member_can_create_task_in_their_project(): void
+    public function test_member_cannot_create_task_in_their_project(): void
     {
         $token = $this->member->createToken('auth_token')->plainTextToken;
 
@@ -80,7 +80,23 @@ class TaskTest extends TestCase
                 'priority' => 'medium',
             ]);
 
-        $response->assertStatus(201);
+        $response->assertStatus(403);
+        $this->assertDatabaseMissing('tasks', ['title' => 'Member Task']);
+    }
+
+    public function test_manager_cannot_create_task_in_an_unrelated_project(): void
+    {
+        $otherManager = User::factory()->manager()->create();
+        $unrelatedProject = Project::factory()->create(['owner_id' => $otherManager->id]);
+        $token = $this->manager->createToken('auth_token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->postJson("/api/v1/projects/{$unrelatedProject->id}/tasks", [
+                'title' => 'Unauthorized Task',
+            ]);
+
+        $response->assertStatus(403);
+        $this->assertDatabaseMissing('tasks', ['title' => 'Unauthorized Task']);
     }
 
     public function test_user_not_in_project_cannot_create_task(): void
@@ -94,6 +110,21 @@ class TaskTest extends TestCase
             ]);
 
         $response->assertStatus(403);
+    }
+
+    public function test_task_assignee_must_belong_to_the_project_when_creating(): void
+    {
+        $outsider = User::factory()->member()->create();
+        $token = $this->manager->createToken('auth_token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->postJson("/api/v1/projects/{$this->project->id}/tasks", [
+                'title' => 'Invalid assignment',
+                'assignee_id' => $outsider->id,
+            ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('assignee_id');
+        $this->assertDatabaseMissing('tasks', ['title' => 'Invalid assignment']);
     }
 
     // ============================================
@@ -122,9 +153,12 @@ class TaskTest extends TestCase
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->getJson("/api/v1/projects/{$this->project->id}/tasks?status=backlog");
 
-        $response->assertStatus(200);
-        // $this->assertCount(3, $response->json('data'));
-        // $this->assertEquals('backlog', $response->json('data.0.status'));
+        $response->assertOk();
+        $this->assertCount(3, $response->json('data'));
+        $this->assertSame(
+            ['backlog', 'backlog', 'backlog'],
+            array_column($response->json('data'), 'status'),
+        );
     }
 
     public function test_task_index_rejects_invalid_filters(): void
@@ -148,9 +182,71 @@ class TaskTest extends TestCase
         $response = $this->withHeader('Authorization', "Bearer {$token}")
             ->getJson("/api/v1/projects/{$this->project->id}/tasks?search=payment");
 
-        $response->assertStatus(200);
-        // $this->assertCount(1, $response->json('data'));
-        // $this->assertEquals('Fix payment bug', $response->json('data.0.title'));
+        $response->assertOk();
+        $this->assertCount(1, $response->json('data'));
+        $this->assertSame('Fix payment bug', $response->json('data.0.title'));
+    }
+
+    public function test_task_index_paginates_results_and_returns_pagination_metadata(): void
+    {
+        Task::factory(5)->forProject($this->project)->create();
+        $token = $this->member->createToken('auth_token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson("/api/v1/projects/{$this->project->id}/tasks?per_page=2&page=2");
+
+        $response->assertOk()
+            ->assertJsonPath('meta.current_page', 2)
+            ->assertJsonPath('meta.per_page', 2)
+            ->assertJsonPath('meta.total', 5)
+            ->assertJsonPath('meta.last_page', 3);
+        $this->assertCount(2, $response->json('data'));
+    }
+
+    public function test_task_index_filters_by_priority_and_assignee(): void
+    {
+        Task::factory()->forProject($this->project)->assignedTo($this->member)
+            ->create(['priority' => 'urgent', 'title' => 'Matching task']);
+        Task::factory()->forProject($this->project)->assignedTo($this->member2)
+            ->create(['priority' => 'urgent', 'title' => 'Different assignee']);
+        Task::factory()->forProject($this->project)->assignedTo($this->member)
+            ->create(['priority' => 'low', 'title' => 'Different priority']);
+        $token = $this->member->createToken('auth_token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson("/api/v1/projects/{$this->project->id}/tasks?priority=urgent&assignee={$this->member->id}");
+
+        $response->assertOk();
+        $this->assertCount(1, $response->json('data'));
+        $this->assertSame('Matching task', $response->json('data.0.title'));
+    }
+
+    public function test_due_today_is_not_overdue_but_yesterday_is(): void
+    {
+        Task::factory()->forProject($this->project)->create([
+            'title' => 'Due today',
+            'due_date' => today()->toDateString(),
+            'status' => 'in_progress',
+        ]);
+        Task::factory()->forProject($this->project)->create([
+            'title' => 'Overdue task',
+            'due_date' => today()->subDay()->toDateString(),
+            'status' => 'in_progress',
+        ]);
+        $token = $this->member->createToken('auth_token')->plainTextToken;
+
+        $allTasks = $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson("/api/v1/projects/{$this->project->id}/tasks");
+        $allTasks->assertOk();
+        $this->assertFalse(collect($allTasks->json('data'))
+            ->firstWhere('title', 'Due today')['is_overdue']);
+
+        $overdueTasks = $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson("/api/v1/projects/{$this->project->id}/tasks?overdue=true");
+        $overdueTasks->assertOk();
+        $this->assertCount(1, $overdueTasks->json('data'));
+        $this->assertSame('Overdue task', $overdueTasks->json('data.0.title'));
+        $this->assertTrue($overdueTasks->json('data.0.is_overdue'));
     }
 
     // ============================================
@@ -194,6 +290,19 @@ class TaskTest extends TestCase
             ]);
 
         $response->assertStatus(403);
+    }
+
+    public function test_task_assignee_must_belong_to_the_project_when_updating(): void
+    {
+        $task = Task::factory()->forProject($this->project)->assignedTo($this->member)->create();
+        $outsider = User::factory()->member()->create();
+        $token = $this->member->createToken('auth_token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->putJson("/api/v1/tasks/{$task->id}", ['assignee_id' => $outsider->id]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('assignee_id');
+        $this->assertDatabaseHas('tasks', ['id' => $task->id, 'assignee_id' => $this->member->id]);
     }
 
     // ============================================
@@ -312,5 +421,32 @@ class TaskTest extends TestCase
         $this->assertEquals(2, $response->json('statistics.by_status.backlog'));
         $this->assertEquals(3, $response->json('statistics.by_status.in_progress'));
         $this->assertEquals(1, $response->json('statistics.by_status.done'));
+    }
+
+    public function test_my_tasks_rejects_invalid_filters_and_page_size(): void
+    {
+        $token = $this->member->createToken('auth_token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson('/api/v1/my-tasks?status=invalid&priority=invalid&overdue=maybe&per_page=101');
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['status', 'priority', 'overdue', 'per_page']);
+    }
+
+    public function test_my_tasks_applies_filters_and_page_size(): void
+    {
+        Task::factory(3)->assignedTo($this->member)->withStatus('backlog')->create(['priority' => 'high']);
+        Task::factory(2)->assignedTo($this->member)->withStatus('done')->create(['priority' => 'low']);
+        $token = $this->member->createToken('auth_token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson('/api/v1/my-tasks?status=backlog&priority=high&per_page=2');
+
+        $response->assertOk()
+            ->assertJsonPath('meta.per_page', 2)
+            ->assertJsonPath('meta.total', 3);
+        $this->assertCount(2, $response->json('data'));
+        $this->assertSame(['backlog', 'backlog'], array_column($response->json('data'), 'status'));
     }
 }

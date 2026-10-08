@@ -12,9 +12,11 @@ class UserTest extends TestCase
 
     public function test_user_index_rejects_invalid_filters(): void
     {
-        User::factory()->create();
+        $user = User::factory()->create();
+        $token = $user->createToken('auth_token')->plainTextToken;
 
-        $response = $this->getJson('/api/v1/users?role=invalid&project_id=invalid&sort_by=invalid&per_page=0');
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson('/api/v1/users?role=invalid&project_id=invalid&sort_by=invalid&per_page=0');
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['role', 'project_id', 'sort_by', 'per_page']);
