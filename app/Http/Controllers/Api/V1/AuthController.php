@@ -11,9 +11,12 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Http\Requests\V1\RegisterRequest;
 use App\Http\Resources\V1\UserResource;
+use App\Traits\AuthTrait;
 
 class AuthController extends Controller
 {
+    use AuthTrait;
+
     public function register(RegisterRequest $request)
     {
         $data = $request->validated();
@@ -24,12 +27,12 @@ class AuthController extends Controller
 
         $user = User::create($data);
 
-        $token = $user->createToken('api-token')->plainTextToken;
+        $token = $this->generateToken($user);
 
         return response()->json([
             'message' => 'User registered successfully',
             'user' => new UserResource($user),
-            'token' => $token,
+            'token' => $token->plainTextToken,
             'token_type' => 'Bearer',
         ], 201);
     }
@@ -46,12 +49,12 @@ class AuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken('api-token')->plainTextToken;
+        $token = $this->generateToken($user);
 
         return response()->json([
             'message' => 'User logged in successfully',
             'user' => new UserResource($user),
-            'token' => $token,
+            'token' => $token->plainTextToken,
             'token_type' => 'Bearer',
         ]);
     }
