@@ -23,7 +23,7 @@ class TaskIndexRequest extends FormRequest
             'due_from' => ['nullable', 'date'],
             'due_to' => ['nullable', 'date', 'after_or_equal:due_from'],
             'overdue' => ['nullable', 'in:true,false,1,0'],
-            'trashed' => ['nullable', 'boolean'],
+            'trashed' => ['nullable', 'in:true,false,1,0'],
             'sort_by' => ['nullable', Rule::in(['title', 'status', 'priority', 'due_date', 'created_at'])],
             'sort_order' => ['nullable', Rule::in(['asc', 'desc'])],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],

@@ -172,6 +172,24 @@ class TaskTest extends TestCase
             ->assertJsonValidationErrors(['status', 'per_page']);
     }
 
+    public function test_task_index_can_include_soft_deleted_tasks_with_boolean_string(): void
+    {
+        Task::factory()->forProject($this->project)->create(['title' => 'Active task']);
+        $deletedTask = Task::factory()->forProject($this->project)->create(['title' => 'Deleted task']);
+        $deletedTask->delete();
+        $token = $this->member->createToken('auth_token')->plainTextToken;
+
+        $withTrashed = $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson("/api/v1/projects/{$this->project->id}/tasks?trashed=true");
+        $withTrashed->assertOk();
+        $this->assertCount(2, $withTrashed->json('data'));
+
+        $activeOnly = $this->getJson("/api/v1/projects/{$this->project->id}/tasks?trashed=false");
+        $activeOnly->assertOk();
+        $this->assertCount(1, $activeOnly->json('data'));
+        $this->assertSame('Active task', $activeOnly->json('data.0.title'));
+    }
+
     public function test_user_can_search_tasks_by_title(): void
     {
         Task::factory()->forProject($this->project)->create(['title' => 'Fix payment bug']);
@@ -238,8 +256,10 @@ class TaskTest extends TestCase
         $allTasks = $this->withHeader('Authorization', "Bearer {$token}")
             ->getJson("/api/v1/projects/{$this->project->id}/tasks");
         $allTasks->assertOk();
-        $this->assertFalse(collect($allTasks->json('data'))
-            ->firstWhere('title', 'Due today')['is_overdue']);
+        $dueToday = collect($allTasks->json('data'))->firstWhere('title', 'Due today');
+        $this->assertFalse($dueToday['is_overdue']);
+        $this->assertSame(today()->toDateString(), $dueToday['due_date']);
+        $this->assertSame(today()->toDateString(), $dueToday['due_date_formatted']);
 
         $overdueTasks = $this->withHeader('Authorization', "Bearer {$token}")
             ->getJson("/api/v1/projects/{$this->project->id}/tasks?overdue=true");
@@ -273,6 +293,51 @@ class TaskTest extends TestCase
             'id' => $task->id,
             'title' => 'Updated Title',
         ]);
+    }
+
+    public function test_task_update_rejects_null_status_and_priority(): void
+    {
+        $task = Task::factory()->forProject($this->project)->assignedTo($this->member)->create([
+            'status' => 'backlog',
+            'priority' => 'medium',
+        ]);
+        $token = $this->member->createToken('auth_token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->putJson("/api/v1/tasks/{$task->id}", ['status' => null, 'priority' => null]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['status', 'priority']);
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'status' => 'backlog',
+            'priority' => 'medium',
+        ]);
+    }
+
+    public function test_member_cannot_view_task_from_an_unrelated_project(): void
+    {
+        $otherManager = User::factory()->manager()->create();
+        $otherProject = Project::factory()->create(['owner_id' => $otherManager->id]);
+        $task = Task::factory()->forProject($otherProject)->create();
+        $token = $this->member->createToken('auth_token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson("/api/v1/tasks/{$task->id}");
+
+        $response->assertStatus(403);
+    }
+
+    public function test_assignee_who_left_project_cannot_update_task(): void
+    {
+        $task = Task::factory()->forProject($this->project)->assignedTo($this->member)->create();
+        $this->project->members()->detach($this->member->id);
+        $token = $this->member->createToken('auth_token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->putJson("/api/v1/tasks/{$task->id}", ['title' => 'Should not update']);
+
+        $response->assertStatus(403);
+        $this->assertDatabaseHas('tasks', ['id' => $task->id, 'title' => $task->title]);
     }
 
     public function test_member_cannot_update_task_assigned_to_other(): void

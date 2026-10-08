@@ -20,7 +20,7 @@ class TaskResource extends JsonResource
             'status_label' => Task::STATUSES[$this->status] ?? $this->status,
             'priority' => $this->priority,
             'priority_label' => Task::PRIORITIES[$this->priority] ?? $this->priority,
-            'due_date' => $this->due_date?->toISOString(),
+            'due_date' => $this->due_date?->format('Y-m-d'),
             'due_date_formatted' => $this->due_date?->format('Y-m-d'),
             'is_overdue' => $this->isOverdue(),
             'project' => new ProjectResource($this->whenLoaded('project')),

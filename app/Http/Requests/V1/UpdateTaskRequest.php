@@ -22,8 +22,8 @@ class UpdateTaskRequest extends FormRequest
         return [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
-            'status' => ['nullable', Rule::in(array_keys(Task::STATUSES))],
-            'priority' => ['nullable', Rule::in(array_keys(Task::PRIORITIES))],
+            'status' => ['sometimes', 'required', Rule::in(array_keys(Task::STATUSES))],
+            'priority' => ['sometimes', 'required', Rule::in(array_keys(Task::PRIORITIES))],
             'due_date' => ['nullable', 'date', 'after_or_equal:today'],
             'assignee_id' => [
                 'nullable',
